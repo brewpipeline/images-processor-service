@@ -6,19 +6,24 @@ pub use crate::handle_image::*;
 pub use crate::image_type::*;
 pub use crate::process_images::*;
 
+pub const fn parse_u32(s: &str) -> u32 {
+    let mut out: u32 = 0;
+    let mut i: usize = 0;
+    while i < s.len() {
+        out *= 10;
+        out += (s.as_bytes()[i] - b'0') as u32;
+        i += 1;
+    }
+    out
+}
+
 pub const SERVER_ADDRESS: &'static str = env!("SERVER_ADDRESS"); // 127.0.0.1:4000
 pub const EXTERN_LOCATION_IMAGES_STORAGE_PATH: &'static str =
     env!("EXTERN_LOCATION_IMAGES_STORAGE_PATH"); // https://site.com/images/
 pub const LOCAL_IMAGES_STORAGE_PATH: &'static str = env!("LOCAL_IMAGES_STORAGE_PATH"); // ./images/
-pub const THUMBNAIL_SMALL_WIDTH: u32 = env!("THUMBNAIL_SMALL_WIDTH")
-    .parse()
-    .expect("`THUMBNAIL_SMALL_WIDTH` should be `u32`"); // 250
-pub const THUMBNAIL_MEDIUM_WIDTH: u32 = env!("THUMBNAIL_MEDIUM_WIDTH")
-    .parse()
-    .expect("`THUMBNAIL_MEDIUM_WIDTH` should be `u32`"); // 750
-pub const THUMBNAIL_HEIGHT_MULTIPLIER: u32 = env!("THUMBNAIL_HEIGHT_MULTIPLIER")
-    .parse()
-    .expect("`THUMBNAIL_HEIGHT_MULTIPLIER` should be `u32`"); // 3
+pub const THUMBNAIL_SMALL_WIDTH: u32 = parse_u32(env!("THUMBNAIL_SMALL_WIDTH")); // 250
+pub const THUMBNAIL_MEDIUM_WIDTH: u32 = parse_u32(env!("THUMBNAIL_MEDIUM_WIDTH")); // 750
+pub const THUMBNAIL_HEIGHT_MULTIPLIER: u32 = parse_u32(env!("THUMBNAIL_HEIGHT_MULTIPLIER")); // 3
 
 // ------------------------------
 
