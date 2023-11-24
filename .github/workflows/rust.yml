@@ -1,0 +1,32 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    env:
+      SERVER_ADDRESS: ""
+      EXTERN_LOCATION_IMAGES_STORAGE_PATH: ""
+      LOCAL_IMAGES_STORAGE_PATH: ""
+      THUMBNAIL_SMALL_WIDTH: ""
+      THUMBNAIL_MEDIUM_WIDTH: ""
+      THUMBNAIL_HEIGHT_MULTIPLIER: ""
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --verbose --all-features
+    - name: Run tests
+      run: cargo test --verbose --all-features
