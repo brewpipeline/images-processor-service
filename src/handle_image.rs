@@ -49,6 +49,14 @@ pub async fn handle_image(
         Ok(_) => HttpResponse::MovedPermanently()
             .append_header(("Location", extern_path))
             .finish(),
-        Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+        Err(err) => {
+            let reason = err.to_string();
+            println!("{reason}");
+            if cfg!(debug_assertions) {
+                HttpResponse::InternalServerError().body(reason)
+            } else {
+                HttpResponse::InternalServerError().finish()
+            }
+        }
     }
 }
