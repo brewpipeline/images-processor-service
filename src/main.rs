@@ -35,8 +35,8 @@ use std::sync::{mpsc, Mutex};
 #[get("/small/{base64_url}")]
 pub async fn handle_small_thumbnail_image(
     base64_url: web::Path<String>,
-    tx: web::Data<mpsc::Sender<(ImageType, String, flume::Sender<()>)>>,
-    in_progress_storage: web::Data<Mutex<HashMap<String, flume::Receiver<()>>>>,
+    tx: web::Data<mpsc::Sender<(ImageType, String, flume::Sender<ProcessResult>)>>,
+    in_progress_storage: web::Data<Mutex<HashMap<String, flume::Receiver<ProcessResult>>>>,
 ) -> HttpResponse {
     handle_image(
         ImageType::Thumbnail {
@@ -53,8 +53,8 @@ pub async fn handle_small_thumbnail_image(
 #[get("/medium/{base64_url}")]
 pub async fn handle_medium_thumbnail_image(
     base64_url: web::Path<String>,
-    tx: web::Data<mpsc::Sender<(ImageType, String, flume::Sender<()>)>>,
-    in_progress_storage: web::Data<Mutex<HashMap<String, flume::Receiver<()>>>>,
+    tx: web::Data<mpsc::Sender<(ImageType, String, flume::Sender<ProcessResult>)>>,
+    in_progress_storage: web::Data<Mutex<HashMap<String, flume::Receiver<ProcessResult>>>>,
 ) -> HttpResponse {
     handle_image(
         ImageType::Thumbnail {
@@ -71,8 +71,8 @@ pub async fn handle_medium_thumbnail_image(
 #[get("/{base64_url}")]
 pub async fn handle_normal_image(
     base64_url: web::Path<String>,
-    tx: web::Data<mpsc::Sender<(ImageType, String, flume::Sender<()>)>>,
-    in_progress_storage: web::Data<Mutex<HashMap<String, flume::Receiver<()>>>>,
+    tx: web::Data<mpsc::Sender<(ImageType, String, flume::Sender<ProcessResult>)>>,
+    in_progress_storage: web::Data<Mutex<HashMap<String, flume::Receiver<ProcessResult>>>>,
 ) -> HttpResponse {
     handle_image(ImageType::Normal, base64_url, tx, in_progress_storage).await
 }
@@ -80,9 +80,9 @@ pub async fn handle_normal_image(
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let (tx, rx) = mpsc::channel();
-    let in_progress_storage = web::Data::new(Mutex::<HashMap<String, flume::Receiver<()>>>::new(
-        Default::default(),
-    ));
+    let in_progress_storage = web::Data::new(Mutex::<
+        HashMap<String, flume::Receiver<ProcessResult>>,
+    >::new(Default::default()));
 
     std::thread::spawn(move || {
         process_images(rx);
