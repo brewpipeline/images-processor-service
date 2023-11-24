@@ -12,7 +12,7 @@ pub fn process_images(rx: mpsc::Receiver<(ImageType, String, flume::Sender<()>)>
 }
 
 fn download_and_process_image(image_type: ImageType, base64_url: String) -> Result<(), ()> {
-    let url_vec = general_purpose::STANDARD
+    let url_vec = general_purpose::URL_SAFE
         .decode(&base64_url)
         .map_err(|_| ())?;
     let url = String::from_utf8(url_vec).map_err(|_| ())?;
