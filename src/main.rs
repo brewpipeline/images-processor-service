@@ -17,15 +17,27 @@ pub const fn parse_u32(s: &str) -> u32 {
     out
 }
 
-pub const SERVER_ADDRESS: &'static str = env!("SERVER_ADDRESS"); // 127.0.0.1:4000
+// 127.0.0.1:4000
+pub const SERVER_ADDRESS: &'static str = env!("SERVER_ADDRESS");
+
+// https://site.com/images/
 pub const EXTERN_LOCATION_IMAGES_STORAGE_PATH: &'static str =
-    env!("EXTERN_LOCATION_IMAGES_STORAGE_PATH"); // https://site.com/images/
-pub const LOCAL_IMAGES_STORAGE_PATH: &'static str = env!("LOCAL_IMAGES_STORAGE_PATH"); // ./images/
-pub const THUMBNAIL_SMALL_WIDTH: u32 = parse_u32(env!("THUMBNAIL_SMALL_WIDTH")); // 250
-pub const THUMBNAIL_MEDIUM_WIDTH: u32 = parse_u32(env!("THUMBNAIL_MEDIUM_WIDTH")); // 750
-pub const THUMBNAIL_HEIGHT_MULTIPLIER: u32 = parse_u32(env!("THUMBNAIL_HEIGHT_MULTIPLIER")); // 3
-pub const IGNORE_INVALID_CERTS_URLS_PREFIXES_LIST: &'static str =
-    env!("IGNORE_INVALID_CERTS_URLS_PREFIXES_LIST"); // https://site.com,https://site.ru
+    env!("EXTERN_LOCATION_IMAGES_STORAGE_PATH");
+
+// ./images/
+pub const LOCAL_IMAGES_STORAGE_PATH: &'static str = env!("LOCAL_IMAGES_STORAGE_PATH");
+
+// 250
+pub const THUMBNAIL_SMALL_WIDTH: u32 = parse_u32(env!("THUMBNAIL_SMALL_WIDTH"));
+
+// 750
+pub const THUMBNAIL_MEDIUM_WIDTH: u32 = parse_u32(env!("THUMBNAIL_MEDIUM_WIDTH"));
+
+// 3
+pub const THUMBNAIL_HEIGHT_MULTIPLIER: u32 = parse_u32(env!("THUMBNAIL_HEIGHT_MULTIPLIER"));
+
+// https://site.com/:/var/www/site.com/,https://site.ru/:/var/www/site.ru/
+pub const EXTERNAL_TO_LOCAL_PATHS_MAP: &'static str = env!("EXTERNAL_TO_LOCAL_PATHS_MAP");
 
 // ------------------------------
 

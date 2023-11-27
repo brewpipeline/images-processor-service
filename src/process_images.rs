@@ -25,22 +25,32 @@ pub fn process_images(rx: mpsc::Receiver<(ImageType, String, flume::Sender<Proce
 }
 
 fn download_and_process_image(image_type: &ImageType, base64_url: &String) -> ProcessResult {
+    let external_to_local_paths_map: HashMap<&str, &str> = EXTERNAL_TO_LOCAL_PATHS_MAP
+        .split(',')
+        .filter_map(|pair| {
+            let parts: Vec<&str> = pair.split(':').collect();
+            if parts.len() == 2 {
+                Some((parts[0], parts[1]))
+            } else {
+                None
+            }
+        })
+        .collect();
+
     let url_vec = general_purpose::URL_SAFE.decode(base64_url)?;
     let url = String::from_utf8(url_vec)?;
-    let res = {
-        let urls_prefixes_list: Vec<&str> =
-            IGNORE_INVALID_CERTS_URLS_PREFIXES_LIST.split(',').collect();
-        let mut client_builder = reqwest::blocking::Client::builder();
-        if urls_prefixes_list
+    let image = if let Some((external_path_component, local_path_component)) =
+        external_to_local_paths_map
             .iter()
-            .any(|&url_prefix| !url_prefix.is_empty() && url.starts_with(url_prefix))
-        {
-            client_builder = client_builder.danger_accept_invalid_certs(true);
-        }
-        client_builder.build()?.get(url).send()?
+            .find(|&(k, &_)| url.contains(k))
+    {
+        let local_path = url.replace(external_path_component, local_path_component);
+        image::io::Reader::open(local_path)?.decode()?
+    } else {
+        let res = reqwest::blocking::get(url)?;
+        let bytes = res.bytes()?;
+        image::load_from_memory(&bytes)?
     };
-    let bytes = res.bytes()?;
-    let image = image::load_from_memory(&bytes)?;
     let image = image_type.process_image(image);
     let path = image_type.local_path(base64_url);
     let temp_path = format!("{path}.tmp");
