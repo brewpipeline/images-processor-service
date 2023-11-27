@@ -23,6 +23,7 @@ jobs:
       THUMBNAIL_SMALL_WIDTH: ""
       THUMBNAIL_MEDIUM_WIDTH: ""
       THUMBNAIL_HEIGHT_MULTIPLIER: ""
+      IGNORE_INVALID_CERTS_URLS_PREFIXES_LIST: ""
 
     steps:
     - uses: actions/checkout@v3
