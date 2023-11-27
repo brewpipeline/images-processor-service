@@ -36,7 +36,7 @@ pub const THUMBNAIL_MEDIUM_WIDTH: u32 = parse_u32(env!("THUMBNAIL_MEDIUM_WIDTH")
 // 3
 pub const THUMBNAIL_HEIGHT_MULTIPLIER: u32 = parse_u32(env!("THUMBNAIL_HEIGHT_MULTIPLIER"));
 
-// https://site.com/:/var/www/site.com/,https://site.ru/:/var/www/site.ru/
+// https://site.com/|/var/www/site.com/,https://site.ru/|/var/www/site.ru/
 pub const EXTERNAL_TO_LOCAL_PATHS_MAP: &'static str = env!("EXTERNAL_TO_LOCAL_PATHS_MAP");
 
 // ------------------------------

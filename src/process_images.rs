@@ -28,7 +28,7 @@ fn download_and_process_image(image_type: &ImageType, base64_url: &String) -> Pr
     let external_to_local_paths_map: HashMap<&str, &str> = EXTERNAL_TO_LOCAL_PATHS_MAP
         .split(',')
         .filter_map(|pair| {
-            let parts: Vec<&str> = pair.split(':').collect();
+            let parts: Vec<&str> = pair.split('|').collect();
             if parts.len() == 2 {
                 Some((parts[0], parts[1]))
             } else {
