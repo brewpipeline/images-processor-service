@@ -27,7 +27,18 @@ pub fn process_images(rx: mpsc::Receiver<(ImageType, String, flume::Sender<Proce
 fn download_and_process_image(image_type: &ImageType, base64_url: &String) -> ProcessResult {
     let url_vec = general_purpose::URL_SAFE.decode(base64_url)?;
     let url = String::from_utf8(url_vec)?;
-    let res = reqwest::blocking::get(url)?;
+    let res = {
+        let urls_prefixes_list: Vec<&str> =
+            IGNORE_INVALID_CERTS_URLS_PREFIXES_LIST.split(',').collect();
+        let mut client_builder = reqwest::blocking::Client::builder();
+        if urls_prefixes_list
+            .iter()
+            .any(|&url_prefix| !url_prefix.is_empty() && url.starts_with(url_prefix))
+        {
+            client_builder = client_builder.danger_accept_invalid_certs(true);
+        }
+        client_builder.build()?.get(url).send()?
+    };
     let bytes = res.bytes()?;
     let image = image::load_from_memory(&bytes)?;
     let image = image_type.process_image(image);

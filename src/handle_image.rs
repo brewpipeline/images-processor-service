@@ -49,6 +49,6 @@ pub async fn handle_image(
         Ok(_) => HttpResponse::MovedPermanently()
             .append_header(("Location", extern_path))
             .finish(),
-        Err(_) => HttpResponse::InternalServerError().finish()
+        Err(_) => HttpResponse::InternalServerError().finish(),
     }
 }

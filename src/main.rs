@@ -24,6 +24,8 @@ pub const LOCAL_IMAGES_STORAGE_PATH: &'static str = env!("LOCAL_IMAGES_STORAGE_P
 pub const THUMBNAIL_SMALL_WIDTH: u32 = parse_u32(env!("THUMBNAIL_SMALL_WIDTH")); // 250
 pub const THUMBNAIL_MEDIUM_WIDTH: u32 = parse_u32(env!("THUMBNAIL_MEDIUM_WIDTH")); // 750
 pub const THUMBNAIL_HEIGHT_MULTIPLIER: u32 = parse_u32(env!("THUMBNAIL_HEIGHT_MULTIPLIER")); // 3
+pub const IGNORE_INVALID_CERTS_URLS_PREFIXES_LIST: &'static str =
+    env!("IGNORE_INVALID_CERTS_URLS_PREFIXES_LIST"); // https://site.com,https://site.ru
 
 // ------------------------------
 
