@@ -37,6 +37,7 @@ COPY --from=builder /app/target/release/images-processor-service .
 COPY <<'EOF' /etc/nginx/conf.d/default.conf.template
 server {
     listen 0.0.0.0:${PORT};
+    listen [::]:${PORT};
 
     root /images;
 
