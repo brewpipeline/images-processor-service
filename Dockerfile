@@ -4,7 +4,7 @@ FROM rust:1.95-slim AS builder
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
 ARG EXTERN_LOCATION_IMAGES_STORAGE_PATH
-ARG LOCAL_IMAGES_STORAGE_PATH=/images/
+ARG LOCAL_IMAGES_STORAGE_PATH=/images/external/
 ARG THUMBNAIL_SMALL_WIDTH=250
 ARG THUMBNAIL_MEDIUM_WIDTH=750
 ARG THUMBNAIL_HEIGHT_MULTIPLIER=3
@@ -31,7 +31,7 @@ RUN rm -f /etc/nginx/sites-enabled/default \
           /etc/nginx/conf.d/default.conf \
           /var/www/html/index.nginx-debian.html
 
-ARG LOCAL_IMAGES_STORAGE_PATH=/images/
+ARG LOCAL_IMAGES_STORAGE_PATH=/images/external/
 
 WORKDIR /app
 COPY --from=builder /app/target/release/images-processor-service .
