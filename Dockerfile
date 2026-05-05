@@ -35,7 +35,6 @@ ARG LOCAL_IMAGES_STORAGE_PATH=/images/
 
 WORKDIR /app
 COPY --from=builder /app/target/release/images-processor-service .
-RUN mkdir -p "$LOCAL_IMAGES_STORAGE_PATH"
 
 COPY <<'EOF' /etc/nginx/conf.d/default.conf.template
 server {
@@ -46,25 +45,11 @@ server {
     underscores_in_headers on;
 
     location / {
-        try_files $uri @serverproxy;
+        try_files $uri =404;
     }
 
     location /external/mirror/ {
         proxy_pass http://127.0.0.1:3000/;
-        proxy_http_version 1.1;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port $server_port;
-    }
-
-    location @serverproxy {
-        proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_cache_bypass $http_upgrade;
         proxy_set_header Upgrade $http_upgrade;
@@ -84,6 +69,7 @@ COPY <<'EOF' /app/start.sh
 set -eu
 echo "PORT=$PORT"
 export PORT
+mkdir -p /images/external
 envsubst '${PORT}' \
     < /etc/nginx/conf.d/default.conf.template \
     > /etc/nginx/conf.d/default.conf
