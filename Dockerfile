@@ -3,18 +3,18 @@ FROM rust:1.95-slim AS builder
 
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
-ARG DOMAIN
+ARG SITE_DOMAIN
 ARG THUMBNAIL_SMALL_WIDTH=250
 ARG THUMBNAIL_MEDIUM_WIDTH=750
 ARG THUMBNAIL_HEIGHT_MULTIPLIER=3
 
 ENV SERVER_ADDRESS="127.0.0.1:3000" \
-    EXTERN_LOCATION_IMAGES_STORAGE_PATH=https://$DOMAIN/images/external/ \
+    EXTERN_LOCATION_IMAGES_STORAGE_PATH=https://$SITE_DOMAIN/images/external/ \
     LOCAL_IMAGES_STORAGE_PATH=/images/ \
     THUMBNAIL_SMALL_WIDTH=$THUMBNAIL_SMALL_WIDTH \
     THUMBNAIL_MEDIUM_WIDTH=$THUMBNAIL_MEDIUM_WIDTH \
     THUMBNAIL_HEIGHT_MULTIPLIER=$THUMBNAIL_HEIGHT_MULTIPLIER \
-    EXTERNAL_TO_LOCAL_PATHS_MAP=https://$DOMAIN/\|/
+    EXTERNAL_TO_LOCAL_PATHS_MAP=https://$SITE_DOMAIN/\|/
 
 WORKDIR /app
 COPY . .
@@ -28,8 +28,6 @@ RUN rm -f /etc/nginx/sites-enabled/default \
           /etc/nginx/sites-available/default \
           /etc/nginx/conf.d/default.conf \
           /var/www/html/index.nginx-debian.html
-RUN ln -sf /dev/stdout /var/log/nginx/access.log && \
-    ln -sf /dev/stderr /var/log/nginx/error.log
 
 ARG LOCAL_IMAGES_STORAGE_PATH=/images/
 
