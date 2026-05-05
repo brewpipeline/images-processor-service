@@ -3,20 +3,18 @@ FROM rust:1.95-slim AS builder
 
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
-ARG EXTERN_LOCATION_IMAGES_STORAGE_PATH
-ARG LOCAL_IMAGES_STORAGE_PATH=/images/external/
+ARG DOMAIN
 ARG THUMBNAIL_SMALL_WIDTH=250
 ARG THUMBNAIL_MEDIUM_WIDTH=750
 ARG THUMBNAIL_HEIGHT_MULTIPLIER=3
-ARG EXTERNAL_TO_LOCAL_PATHS_MAP
 
 ENV SERVER_ADDRESS="127.0.0.1:3000" \
-    EXTERN_LOCATION_IMAGES_STORAGE_PATH=$EXTERN_LOCATION_IMAGES_STORAGE_PATH \
-    LOCAL_IMAGES_STORAGE_PATH=$LOCAL_IMAGES_STORAGE_PATH \
+    EXTERN_LOCATION_IMAGES_STORAGE_PATH=https://$DOMAIN/ \
+    LOCAL_IMAGES_STORAGE_PATH=/images/ \
     THUMBNAIL_SMALL_WIDTH=$THUMBNAIL_SMALL_WIDTH \
     THUMBNAIL_MEDIUM_WIDTH=$THUMBNAIL_MEDIUM_WIDTH \
     THUMBNAIL_HEIGHT_MULTIPLIER=$THUMBNAIL_HEIGHT_MULTIPLIER \
-    EXTERNAL_TO_LOCAL_PATHS_MAP=$EXTERNAL_TO_LOCAL_PATHS_MAP
+    EXTERNAL_TO_LOCAL_PATHS_MAP=https://$DOMAIN/\|/
 
 WORKDIR /app
 COPY . .
@@ -31,7 +29,7 @@ RUN rm -f /etc/nginx/sites-enabled/default \
           /etc/nginx/conf.d/default.conf \
           /var/www/html/index.nginx-debian.html
 
-ARG LOCAL_IMAGES_STORAGE_PATH=/images/external/
+ARG LOCAL_IMAGES_STORAGE_PATH=/images/
 
 WORKDIR /app
 COPY --from=builder /app/target/release/images-processor-service .
@@ -48,7 +46,7 @@ server {
         try_files $uri =404;
     }
 
-    location /external/mirror/ {
+    location /mirror/ {
         proxy_pass http://127.0.0.1:3000/;
         proxy_http_version 1.1;
         proxy_cache_bypass $http_upgrade;
@@ -69,7 +67,6 @@ COPY <<'EOF' /app/start.sh
 set -eu
 echo "PORT=$PORT"
 export PORT
-mkdir -p /images/external
 envsubst '${PORT}' \
     < /etc/nginx/conf.d/default.conf.template \
     > /etc/nginx/conf.d/default.conf
