@@ -23,7 +23,7 @@ RUN cargo build --release
 
 FROM debian:trixie-slim
 
-RUN apt-get update && apt-get install -y ca-certificates libssl3 nginx && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates libssl3 nginx gettext-base && rm -rf /var/lib/apt/lists/*
 RUN rm -f /etc/nginx/sites-enabled/default \
           /etc/nginx/sites-available/default \
           /etc/nginx/conf.d/default.conf \
@@ -34,10 +34,10 @@ ARG LOCAL_IMAGES_STORAGE_PATH=/images/
 WORKDIR /app
 COPY --from=builder /app/target/release/images-processor-service .
 
-COPY <<'EOF' /etc/nginx/conf.d/default.conf
+COPY <<'EOF' /etc/nginx/conf.d/default.conf.template
 server {
-    listen 0.0.0.0:80;
-    listen [::]:80;
+    listen 0.0.0.0:${PORT};
+    listen [::]:${PORT};
 
     root /images;
 
@@ -66,6 +66,11 @@ EOF
 COPY <<'EOF' /app/start.sh
 #!/bin/sh
 set -eu
+echo "PORT=$PORT"
+export PORT
+envsubst '${PORT}' \
+    < /etc/nginx/conf.d/default.conf.template \
+    > /etc/nginx/conf.d/default.conf
 nginx -t
 ./images-processor-service &
 SERVER_PID=$!
