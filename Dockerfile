@@ -28,6 +28,8 @@ RUN rm -f /etc/nginx/sites-enabled/default \
           /etc/nginx/sites-available/default \
           /etc/nginx/conf.d/default.conf \
           /var/www/html/index.nginx-debian.html
+RUN ln -sf /dev/stdout /var/log/nginx/access.log && \
+    ln -sf /dev/stderr /var/log/nginx/error.log
 
 ARG LOCAL_IMAGES_STORAGE_PATH=/images/
 
