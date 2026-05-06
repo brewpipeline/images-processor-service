@@ -10,8 +10,7 @@ use std::io::Write;
 pub type ProcessResult = Result<(), Box<dyn Error + Send + Sync>>;
 
 pub fn process_images(rx: mpsc::Receiver<(ImageType, String, flume::Sender<ProcessResult>)>) {
-    loop {
-        let (image_type, base64_url, tx) = rx.recv().unwrap();
+    while let Ok((image_type, base64_url, tx)) = rx.recv() {
         let result = download_and_process_image(&image_type, &base64_url);
         if let Some(err) = result.as_ref().err() {
             println!(
@@ -21,7 +20,7 @@ pub fn process_images(rx: mpsc::Receiver<(ImageType, String, flume::Sender<Proce
                 reason = err.to_string()
             )
         }
-        tx.send(result).unwrap();
+        let _ = tx.send(result);
     }
 }
 
