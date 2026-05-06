@@ -31,7 +31,16 @@ pub async fn handle_image(
                     res_rx
                 }
             };
-            let result = res_rx.recv().unwrap();
+            let result = match res_rx.recv() {
+                Ok(r) => r,
+                Err(_) => {
+                    if Path::new(&image_type.local_path(&base64_url)).exists() {
+                        Ok(())
+                    } else {
+                        Err(Box::from("processing taken by another request and failed"))
+                    }
+                }
+            };
             {
                 let mut in_progress_storage = in_progress_storage.lock().unwrap();
                 in_progress_storage.remove(&base64_url.to_string());
