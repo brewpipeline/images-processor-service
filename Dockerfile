@@ -10,7 +10,7 @@ ARG THUMBNAIL_HEIGHT_MULTIPLIER=3
 
 ENV SERVER_ADDRESS="127.0.0.1:3000" \
     EXTERN_LOCATION_IMAGES_STORAGE_PATH=https://$SITE_DOMAIN/images/external/ \
-    LOCAL_IMAGES_STORAGE_PATH=/images/ \
+    LOCAL_IMAGES_STORAGE_PATH=/images/external/ \
     THUMBNAIL_SMALL_WIDTH=$THUMBNAIL_SMALL_WIDTH \
     THUMBNAIL_MEDIUM_WIDTH=$THUMBNAIL_MEDIUM_WIDTH \
     THUMBNAIL_HEIGHT_MULTIPLIER=$THUMBNAIL_HEIGHT_MULTIPLIER \
@@ -72,6 +72,7 @@ envsubst '${PORT}' \
     < /etc/nginx/conf.d/default.conf.template \
     > /etc/nginx/conf.d/default.conf
 nginx -t
+mkdir -p /images/external
 ./images-processor-service &
 SERVER_PID=$!
 ( wait "$SERVER_PID"; echo "images-processor-service exited" >&2; kill 1 ) &
