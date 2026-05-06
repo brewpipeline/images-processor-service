@@ -29,8 +29,6 @@ RUN rm -f /etc/nginx/sites-enabled/default \
           /etc/nginx/conf.d/default.conf \
           /var/www/html/index.nginx-debian.html
 
-ARG LOCAL_IMAGES_STORAGE_PATH=/images/external/
-
 WORKDIR /app
 COPY --from=builder /app/target/release/images-processor-service .
 
@@ -39,7 +37,7 @@ server {
     listen 0.0.0.0:${PORT};
     listen [::]:${PORT};
 
-    root /images;
+    root /images/external;
 
     underscores_in_headers on;
 
