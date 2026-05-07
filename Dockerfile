@@ -3,18 +3,18 @@ FROM rust:1.95-slim AS builder
 
 RUN apt-get update && apt-get install -y pkg-config libssl-dev make && rm -rf /var/lib/apt/lists/*
 
-ARG SITE_DOMAIN
+ARG DOMAIN
 ARG THUMBNAIL_SMALL_WIDTH=250
 ARG THUMBNAIL_MEDIUM_WIDTH=750
 ARG THUMBNAIL_HEIGHT_MULTIPLIER=3
 
 ENV SERVER_ADDRESS="127.0.0.1:3000" \
-    EXTERN_LOCATION_IMAGES_STORAGE_PATH=https://$SITE_DOMAIN/images/external/ \
-    LOCAL_IMAGES_STORAGE_PATH=/images/external/ \
+    EXTERN_LOCATION_IMAGES_STORAGE_PATH=https://$DOMAIN/ \
+    LOCAL_IMAGES_STORAGE_PATH=/images/ \
     THUMBNAIL_SMALL_WIDTH=$THUMBNAIL_SMALL_WIDTH \
     THUMBNAIL_MEDIUM_WIDTH=$THUMBNAIL_MEDIUM_WIDTH \
     THUMBNAIL_HEIGHT_MULTIPLIER=$THUMBNAIL_HEIGHT_MULTIPLIER \
-    EXTERNAL_TO_LOCAL_PATHS_MAP=https://$SITE_DOMAIN/\|/
+    EXTERNAL_TO_LOCAL_PATHS_MAP=https://$DOMAIN/\|/
 
 WORKDIR /app
 COPY . .
@@ -33,13 +33,20 @@ WORKDIR /app
 COPY --from=builder /app/target/release/images-processor-service .
 
 COPY <<'EOF' /etc/nginx/conf.d/default.conf.template
+map $host $cors_origin {
+    ~^images\.(.+)$ "https://$1";
+    default          "";
+}
+
 server {
     listen 0.0.0.0:${PORT};
-    listen [::]:${PORT};
 
-    root /images/external;
+    root /images;
 
     underscores_in_headers on;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Access-Control-Allow-Origin $cors_origin always;
 
     location / {
         try_files $uri =404;
@@ -70,7 +77,7 @@ envsubst '${PORT}' \
     < /etc/nginx/conf.d/default.conf.template \
     > /etc/nginx/conf.d/default.conf
 nginx -t
-mkdir -p /images/external
+mkdir -p /images
 ./images-processor-service &
 SERVER_PID=$!
 ( wait "$SERVER_PID"; echo "images-processor-service exited" >&2; kill 1 ) &
