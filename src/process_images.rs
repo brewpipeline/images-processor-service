@@ -47,7 +47,10 @@ fn download_and_process_image(image_type: &ImageType, base64_url: &String) -> Pr
         let local_path = url.replace(external_path_component, local_path_component);
         image::ImageReader::open(local_path)?.decode()?
     } else {
-        let res = reqwest::blocking::get(url)?;
+        let client = reqwest::blocking::Client::builder()
+        .user_agent("Mozilla/5.0 (compatible; BlogImageBot/1.0)")
+        .build()?;
+    let res = client.get(url).send()?;
         let bytes = res.bytes()?;
         image::load_from_memory(&bytes)?
     };
