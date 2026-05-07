@@ -53,6 +53,7 @@ pub async fn handle_image(
     match result {
         Ok(_) => HttpResponse::MovedPermanently()
             .append_header(("Location", extern_path))
+            .append_header(("Cache-Control", "public, max-age=31536000, immutable"))
             .finish(),
         Err(_) => HttpResponse::InternalServerError().finish(),
     }
