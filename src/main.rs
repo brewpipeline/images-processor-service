@@ -2,6 +2,9 @@ mod handle_image;
 mod image_type;
 mod process_images;
 
+#[global_allocator]
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 pub use crate::handle_image::*;
 pub use crate::image_type::*;
 pub use crate::process_images::*;
