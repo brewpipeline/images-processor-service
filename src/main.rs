@@ -5,11 +5,10 @@ mod process_images;
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-// Return dirty/muzzy pages to the OS quickly; without this jemalloc retains
-// freed pages indefinitely and RSS never drops after a large image is processed.
 #[allow(non_upper_case_globals)]
 #[unsafe(export_name = "malloc_conf")]
-pub static malloc_conf: &[u8] = b"background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:0\0";
+pub static malloc_conf: &[u8] =
+    b"background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:0,narenas:1\0";
 
 pub use crate::handle_image::*;
 pub use crate::image_type::*;

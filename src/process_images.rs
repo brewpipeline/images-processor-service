@@ -4,10 +4,18 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use std::error::Error;
 use std::fs;
-use std::io::Write;
+use std::io::{Cursor, Write};
 use std::sync::{mpsc, LazyLock};
 
 pub type ProcessResult = Result<(), Box<dyn Error + Send + Sync>>;
+
+const DECODER_MAX_ALLOC: u64 = 256 * 1024 * 1024;
+
+fn decoder_limits() -> image::Limits {
+    let mut limits = image::Limits::default();
+    limits.max_alloc = Some(DECODER_MAX_ALLOC);
+    limits
+}
 
 static HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
     reqwest::blocking::Client::builder()
@@ -52,11 +60,15 @@ fn download_and_process_image(image_type: &ImageType, base64_url: &String) -> Pr
             .find(|&(k, &_)| url.contains(k))
     {
         let local_path = url.replace(external_path_component, local_path_component);
-        image::ImageReader::open(local_path)?.decode()?
+        let mut reader = image::ImageReader::open(local_path)?;
+        reader.limits(decoder_limits());
+        reader.decode()?
     } else {
         let res = HTTP_CLIENT.get(url).send()?;
         let bytes = res.bytes()?;
-        image::load_from_memory(&bytes)?
+        let mut reader = image::ImageReader::new(Cursor::new(&bytes)).with_guessed_format()?;
+        reader.limits(decoder_limits());
+        reader.decode()?
     };
     let image = image_type.process_image(image);
     let path = image_type.local_path(base64_url);
