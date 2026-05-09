@@ -5,6 +5,7 @@ use base64::Engine;
 use std::error::Error;
 use std::fs;
 use std::io::{Cursor, Write};
+use std::ptr;
 use std::sync::{mpsc, LazyLock};
 
 pub type ProcessResult = Result<(), Box<dyn Error + Send + Sync>>;
@@ -36,6 +37,24 @@ pub fn process_images(rx: mpsc::Receiver<(ImageType, String, flume::Sender<Proce
             )
         }
         let _ = tx.send(result);
+        purge_jemalloc_arenas();
+    }
+}
+
+// Force jemalloc to madvise(MADV_DONTNEED) idle pages back to the OS now,
+// instead of waiting for dirty_decay_ms. Without this, the worker's RSS keeps
+// stair-stepping up to the per-job high-water mark and never comes down.
+fn purge_jemalloc_arenas() {
+    // MALLCTL_ARENAS_ALL == 4096; targets every arena in a single call.
+    let name = c"arena.4096.purge";
+    unsafe {
+        tikv_jemalloc_sys::mallctl(
+            name.as_ptr(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+            0,
+        );
     }
 }
 
