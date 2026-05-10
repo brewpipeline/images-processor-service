@@ -38,8 +38,10 @@ pub fn process_images(rx: mpsc::Receiver<(ImageType, String, flume::Sender<Proce
         }
         let _ = tx.send(result);
         purge_jemalloc_arenas();
-        log_jemalloc_stats();
-        log_kernel_memory();
+        if LOG_MEMORY_STATS {
+            log_jemalloc_stats();
+            log_kernel_memory();
+        }
     }
 }
 
@@ -159,9 +161,22 @@ fn download_and_process_image(image_type: &ImageType, base64_url: &String) -> Pr
                 .map_err(|e| format!("simple encode error: {:?}", e))?;
             let mut output_file = fs::File::create(&temp_path)?;
             output_file.write_all(&webp_data)?;
+            output_file.sync_all()?;
+            drop_from_page_cache(&output_file);
         },
         file_format => image.save_with_format(&temp_path, file_format)?,
     }
     fs::rename(&temp_path, path)?;
     Ok(())
 }
+
+#[cfg(target_os = "linux")]
+fn drop_from_page_cache(file: &fs::File) {
+    use std::os::unix::io::AsRawFd;
+    unsafe {
+        libc::posix_fadvise(file.as_raw_fd(), 0, 0, libc::POSIX_FADV_DONTNEED);
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn drop_from_page_cache(_file: &fs::File) {}

@@ -25,6 +25,13 @@ pub const fn parse_u32(s: &str) -> u32 {
     out
 }
 
+pub const fn parse_bool(s: Option<&str>) -> bool {
+    match s {
+        Some(v) => matches!(v.as_bytes(), b"1" | b"true" | b"yes"),
+        None => false,
+    }
+}
+
 // 127.0.0.1:4000
 pub const SERVER_ADDRESS: &'static str = env!("SERVER_ADDRESS");
 
@@ -46,6 +53,10 @@ pub const THUMBNAIL_HEIGHT_MULTIPLIER: u32 = parse_u32(env!("THUMBNAIL_HEIGHT_MU
 
 // https://site.com/|/var/www/site.com/,https://site.ru/|/var/www/site.ru/
 pub const EXTERNAL_TO_LOCAL_PATHS_MAP: &'static str = env!("EXTERNAL_TO_LOCAL_PATHS_MAP");
+
+// 1 / true / yes — optional, default false. Prints jemalloc + /proc + cgroup
+// numbers per processed image; only useful while debugging memory.
+pub const LOG_MEMORY_STATS: bool = parse_bool(option_env!("LOG_MEMORY_STATS"));
 
 // ------------------------------
 
