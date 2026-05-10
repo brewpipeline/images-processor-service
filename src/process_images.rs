@@ -39,6 +39,54 @@ pub fn process_images(rx: mpsc::Receiver<(ImageType, String, flume::Sender<Proce
         let _ = tx.send(result);
         purge_jemalloc_arenas();
         log_jemalloc_stats();
+        log_kernel_memory();
+    }
+}
+
+fn log_kernel_memory() {
+    fn parse_kb(line: &str) -> u64 {
+        line.split_whitespace().nth(1).and_then(|s| s.parse().ok()).unwrap_or(0)
+    }
+    fn parse_bytes(line: &str) -> u64 {
+        line.split_whitespace().nth(1).and_then(|s| s.parse().ok()).unwrap_or(0)
+    }
+
+    if let Ok(status) = fs::read_to_string("/proc/self/status") {
+        let mut rss_kb = 0u64;
+        let mut anon_kb = 0u64;
+        let mut file_kb = 0u64;
+        for line in status.lines() {
+            if line.starts_with("VmRSS:") {
+                rss_kb = parse_kb(line);
+            } else if line.starts_with("RssAnon:") {
+                anon_kb = parse_kb(line);
+            } else if line.starts_with("RssFile:") {
+                file_kb = parse_kb(line);
+            }
+        }
+        println!(
+            "proc: VmRSS={} MiB, RssAnon={} MiB, RssFile={} MiB",
+            rss_kb / 1024,
+            anon_kb / 1024,
+            file_kb / 1024,
+        );
+    }
+
+    if let Ok(stat) = fs::read_to_string("/sys/fs/cgroup/memory.stat") {
+        let mut anon_b = 0u64;
+        let mut file_b = 0u64;
+        for line in stat.lines() {
+            if line.starts_with("anon ") {
+                anon_b = parse_bytes(line);
+            } else if line.starts_with("file ") {
+                file_b = parse_bytes(line);
+            }
+        }
+        println!(
+            "cgroup: anon={} MiB, file={} MiB",
+            anon_b / (1024 * 1024),
+            file_b / (1024 * 1024),
+        );
     }
 }
 
