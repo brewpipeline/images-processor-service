@@ -27,7 +27,8 @@ RUN apt-get update && apt-get install -y ca-certificates libssl3 nginx gettext-b
 RUN rm -f /etc/nginx/sites-enabled/default \
           /etc/nginx/sites-available/default \
           /etc/nginx/conf.d/default.conf \
-          /var/www/html/index.nginx-debian.html
+          /var/www/html/index.nginx-debian.html \
+ && sed -i 's/^worker_processes .*/worker_processes 4;/' /etc/nginx/nginx.conf
 
 WORKDIR /app
 COPY --from=builder /app/target/release/images-processor-service .
