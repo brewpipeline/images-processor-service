@@ -7,6 +7,7 @@ use std::fs;
 use std::io::{Cursor, Write};
 use std::ptr;
 use std::sync::{mpsc, LazyLock};
+use std::time::Duration;
 
 pub type ProcessResult = Result<(), Box<dyn Error + Send + Sync>>;
 
@@ -104,6 +105,18 @@ fn log_jemalloc_stats() {
         allocated / (1024 * 1024),
         resident / (1024 * 1024),
     );
+}
+
+pub fn reclaim_page_cache_loop() {
+    loop {
+        std::thread::sleep(Duration::from_secs(60));
+        if let Ok(mut f) = fs::OpenOptions::new()
+            .write(true)
+            .open("/sys/fs/cgroup/memory.reclaim")
+        {
+            let _ = f.write_all(b"1073741824");
+        }
+    }
 }
 
 fn purge_jemalloc_arenas() {
