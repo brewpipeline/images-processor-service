@@ -38,12 +38,24 @@ pub fn process_images(rx: mpsc::Receiver<(ImageType, String, flume::Sender<Proce
         }
         let _ = tx.send(result);
         purge_jemalloc_arenas();
+        log_jemalloc_stats();
     }
 }
 
-// Force jemalloc to madvise(MADV_DONTNEED) idle pages back to the OS now,
-// instead of waiting for dirty_decay_ms. Without this, the worker's RSS keeps
-// stair-stepping up to the per-job high-water mark and never comes down.
+fn log_jemalloc_stats() {
+    use tikv_jemalloc_ctl::{epoch, stats};
+    if epoch::advance().is_err() {
+        return;
+    }
+    let allocated = stats::allocated::read().unwrap_or(0);
+    let resident = stats::resident::read().unwrap_or(0);
+    println!(
+        "jemalloc: allocated={} MiB, resident={} MiB",
+        allocated / (1024 * 1024),
+        resident / (1024 * 1024),
+    );
+}
+
 fn purge_jemalloc_arenas() {
     // MALLCTL_ARENAS_ALL == 4096; targets every arena in a single call.
     let name = c"arena.4096.purge";
