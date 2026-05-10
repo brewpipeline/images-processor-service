@@ -121,10 +121,6 @@ async fn main() -> std::io::Result<()> {
         process_images(rx);
     });
 
-    std::thread::spawn(|| {
-        reclaim_page_cache_loop();
-    });
-
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(tx.clone()))
