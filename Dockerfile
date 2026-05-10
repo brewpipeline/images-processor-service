@@ -49,6 +49,8 @@ server {
     add_header Access-Control-Allow-Origin $cors_origin always;
 
     location / {
+        directio 512;
+        output_buffers 2 512k;
         try_files $uri =404;
     }
 
