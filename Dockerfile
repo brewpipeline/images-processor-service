@@ -36,8 +36,9 @@ COPY --from=builder /app/target/release/images-processor-service .
 
 COPY <<'EOF' /etc/nginx/conf.d/default.conf.template
 
-log_format detailed '$time_local status=$status remote_addr=$remote_addr realip_remote_addr=$realip_remote_addr cf_connecting_ip="$http_cf_connecting_ip" x_real_ip="$http_x_real_ip" x_forwarded_for="$http_x_forwarded_for" method=$request_method host="$host" uri="$request_uri" ua="$http_user_agent"';
-access_log /var/log/nginx/access.log detailed;
+set_real_ip_from 0.0.0.0/0;
+real_ip_header CF-Connecting-IP;
+real_ip_recursive on;
 
 limit_req_zone $binary_remote_addr zone=images:10m rate=100r/m;
 
