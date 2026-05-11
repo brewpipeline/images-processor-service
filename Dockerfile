@@ -35,6 +35,8 @@ WORKDIR /app
 COPY --from=builder /app/target/release/images-processor-service .
 
 COPY <<'EOF' /etc/nginx/conf.d/default.conf.template
+limit_req_zone $binary_remote_addr zone=images:10m rate=100r/m;
+
 map $host $cors_origin {
     ~^images\.(.+)$ "https://$1";
     default          "";
@@ -51,12 +53,18 @@ server {
     add_header Access-Control-Allow-Origin $cors_origin always;
 
     location / {
+        limit_req zone=images burst=20 nodelay;
+        limit_req_status 429;
+
         directio 512;
         output_buffers 2 512k;
         try_files $uri =404;
     }
 
     location /mirror/ {
+        limit_req zone=images burst=20 nodelay;
+        limit_req_status 429;
+
         proxy_buffering off;
         proxy_pass http://127.0.0.1:3000/;
         proxy_http_version 1.1;
