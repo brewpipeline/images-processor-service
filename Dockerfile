@@ -57,19 +57,16 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header Access-Control-Allow-Origin $cors_origin always;
 
-    location / {
-        limit_req zone=images burst=20 nodelay;
-        limit_req_status 429;
+    limit_req zone=images burst=20 nodelay;
+    limit_req_status 429;
 
+    location / {
         directio 512;
         output_buffers 2 512k;
         try_files $uri =404;
     }
 
     location /mirror/ {
-        limit_req zone=images burst=20 nodelay;
-        limit_req_status 429;
-
         proxy_buffering off;
         proxy_pass http://127.0.0.1:3000/;
         proxy_http_version 1.1;
