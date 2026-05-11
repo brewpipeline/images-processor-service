@@ -40,7 +40,7 @@ set_real_ip_from 0.0.0.0/0;
 real_ip_header CF-Connecting-IP;
 real_ip_recursive on;
 
-limit_req_zone $binary_remote_addr zone=images:10m rate=100r/m;
+limit_req_zone $binary_remote_addr zone=images:10m rate=200r/m;
 
 map $host $cors_origin {
     ~^images\.(.+)$ "https://$1";
@@ -57,7 +57,7 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header Access-Control-Allow-Origin $cors_origin always;
 
-    limit_req zone=images burst=20 nodelay;
+    limit_req zone=images burst=40 nodelay;
     limit_req_status 429;
 
     location / {
