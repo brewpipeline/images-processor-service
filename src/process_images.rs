@@ -13,7 +13,7 @@ use std::time::Duration;
 pub type ProcessResult = Result<(), Box<dyn Error + Send + Sync>>;
 
 const DECODER_MAX_ALLOC: u64 = 256 * 1024 * 1024;
-const MAX_DOWNLOAD_BYTES: u64 = 16 * 1024 * 1024;
+const MAX_DOWNLOAD_BYTES: u64 = 32 * 1024 * 1024;
 const MAX_REDIRECTS: usize = 5;
 
 fn decoder_limits() -> image::Limits {
