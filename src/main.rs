@@ -1,6 +1,7 @@
 mod handle_image;
 mod image_type;
 mod process_images;
+mod signature;
 
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
@@ -13,6 +14,7 @@ pub static malloc_conf: &[u8] =
 pub use crate::handle_image::*;
 pub use crate::image_type::*;
 pub use crate::process_images::*;
+pub use crate::signature::*;
 
 pub const fn parse_u32(s: &str) -> u32 {
     let mut out: u32 = 0;
@@ -54,6 +56,9 @@ pub const THUMBNAIL_HEIGHT_MULTIPLIER: u32 = parse_u32(env!("THUMBNAIL_HEIGHT_MU
 // https://site.com/|/var/www/site.com/,https://site.ru/|/var/www/site.ru/
 pub const EXTERNAL_TO_LOCAL_PATHS_MAP: &'static str = env!("EXTERNAL_TO_LOCAL_PATHS_MAP");
 
+pub static IMAGES_HMAC_SECRET: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| std::env::var("IMAGES_HMAC_SECRET").unwrap_or_default());
+
 // 1 / true / yes — optional, default false. Prints jemalloc + /proc + cgroup
 // numbers per processed image; only useful while debugging memory.
 pub const LOG_MEMORY_STATS: bool = parse_bool(option_env!("LOG_MEMORY_STATS"));
@@ -61,16 +66,26 @@ pub const LOG_MEMORY_STATS: bool = parse_bool(option_env!("LOG_MEMORY_STATS"));
 // ------------------------------
 
 use actix_web::{get, web, App, HttpResponse, HttpServer};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::default::Default;
 use std::sync::{mpsc, Mutex};
 
+#[derive(Deserialize)]
+pub struct SignatureQuery {
+    sig: String,
+}
+
 #[get("/small/{base64_url}")]
 pub async fn handle_small_thumbnail_image(
     base64_url: web::Path<String>,
+    query: web::Query<SignatureQuery>,
     tx: web::Data<mpsc::Sender<(ImageType, String, flume::Sender<ProcessResult>)>>,
     in_progress_storage: web::Data<Mutex<HashMap<String, flume::Receiver<ProcessResult>>>>,
 ) -> HttpResponse {
+    if !verify_signature(&base64_url, &query.sig) {
+        return HttpResponse::Forbidden().finish();
+    }
     handle_image(
         ImageType::Thumbnail {
             nwidth: THUMBNAIL_SMALL_WIDTH,
@@ -86,9 +101,13 @@ pub async fn handle_small_thumbnail_image(
 #[get("/medium/{base64_url}")]
 pub async fn handle_medium_thumbnail_image(
     base64_url: web::Path<String>,
+    query: web::Query<SignatureQuery>,
     tx: web::Data<mpsc::Sender<(ImageType, String, flume::Sender<ProcessResult>)>>,
     in_progress_storage: web::Data<Mutex<HashMap<String, flume::Receiver<ProcessResult>>>>,
 ) -> HttpResponse {
+    if !verify_signature(&base64_url, &query.sig) {
+        return HttpResponse::Forbidden().finish();
+    }
     handle_image(
         ImageType::Thumbnail {
             nwidth: THUMBNAIL_MEDIUM_WIDTH,
@@ -104,9 +123,13 @@ pub async fn handle_medium_thumbnail_image(
 #[get("/{base64_url}")]
 pub async fn handle_normal_image(
     base64_url: web::Path<String>,
+    query: web::Query<SignatureQuery>,
     tx: web::Data<mpsc::Sender<(ImageType, String, flume::Sender<ProcessResult>)>>,
     in_progress_storage: web::Data<Mutex<HashMap<String, flume::Receiver<ProcessResult>>>>,
 ) -> HttpResponse {
+    if !verify_signature(&base64_url, &query.sig) {
+        return HttpResponse::Forbidden().finish();
+    }
     handle_image(ImageType::Normal, base64_url, tx, in_progress_storage).await
 }
 
