@@ -4,13 +4,16 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use std::error::Error;
 use std::fs;
-use std::io::{Cursor, Write};
+use std::io::{Cursor, Read, Write};
+use std::net::{IpAddr, ToSocketAddrs};
 use std::ptr;
 use std::sync::{mpsc, LazyLock};
+use std::time::Duration;
 
 pub type ProcessResult = Result<(), Box<dyn Error + Send + Sync>>;
 
 const DECODER_MAX_ALLOC: u64 = 256 * 1024 * 1024;
+const MAX_DOWNLOAD_BYTES: u64 = 16 * 1024 * 1024;
 
 fn decoder_limits() -> image::Limits {
     let mut limits = image::Limits::default();
@@ -21,9 +24,92 @@ fn decoder_limits() -> image::Limits {
 static HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
     reqwest::blocking::Client::builder()
         .user_agent("Mozilla/5.0 (compatible; BlogImageBot/1.0)")
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(Duration::from_secs(15))
+        .connect_timeout(Duration::from_secs(5))
         .build()
         .expect("failed to build HTTP client")
 });
+
+fn is_public_ip(ip: &IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => {
+            let o = v4.octets();
+            !(v4.is_private()
+                || v4.is_loopback()
+                || v4.is_link_local()
+                || v4.is_broadcast()
+                || v4.is_documentation()
+                || v4.is_unspecified()
+                || o[0] == 0
+                || (o[0] == 100 && (o[1] & 0xc0) == 64)
+                || (o[0] == 192 && o[1] == 0 && o[2] == 0)
+                || o[0] >= 240)
+        }
+        IpAddr::V6(v6) => {
+            if v6.is_loopback() || v6.is_unspecified() {
+                return false;
+            }
+            if let Some(mapped) = v6.to_ipv4_mapped() {
+                return is_public_ip(&IpAddr::V4(mapped));
+            }
+            let seg = v6.segments();
+            if (seg[0] & 0xffc0) == 0xfe80 {
+                return false;
+            }
+            if (seg[0] & 0xfe00) == 0xfc00 {
+                return false;
+            }
+            true
+        }
+    }
+}
+
+fn fetch_remote_image_bytes(url: &str) -> Result<Vec<u8>, Box<dyn Error + Send + Sync>> {
+    let parsed = url::Url::parse(url)?;
+    if parsed.scheme() != "https" {
+        return Err(Box::from("only https image sources are allowed"));
+    }
+    let host = parsed.host_str().ok_or("image source has no host")?;
+    let port = parsed.port_or_known_default().unwrap_or(443);
+
+    let mut resolved_any = false;
+    for addr in (host, port).to_socket_addrs()? {
+        resolved_any = true;
+        if !is_public_ip(&addr.ip()) {
+            return Err(Box::from("image source resolves to a non-public address"));
+        }
+    }
+    if !resolved_any {
+        return Err(Box::from("image source did not resolve"));
+    }
+
+    let res = HTTP_CLIENT.get(parsed).send()?;
+    if !res.status().is_success() {
+        return Err(Box::from("image source returned a non-success status"));
+    }
+    if let Some(content_type) = res.headers().get(reqwest::header::CONTENT_TYPE) {
+        let is_image = content_type
+            .to_str()
+            .map(|v| v.trim_start().starts_with("image/"))
+            .unwrap_or(false);
+        if !is_image {
+            return Err(Box::from("image source returned a non-image content type"));
+        }
+    }
+    if let Some(len) = res.content_length() {
+        if len > MAX_DOWNLOAD_BYTES {
+            return Err(Box::from("image source is too large"));
+        }
+    }
+
+    let mut bytes = Vec::new();
+    res.take(MAX_DOWNLOAD_BYTES + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_DOWNLOAD_BYTES {
+        return Err(Box::from("image source is too large"));
+    }
+    Ok(bytes)
+}
 
 pub fn process_images(rx: mpsc::Receiver<(ImageType, String, flume::Sender<ProcessResult>)>) {
     while let Ok((image_type, base64_url, tx)) = rx.recv() {
@@ -141,12 +227,14 @@ fn download_and_process_image(image_type: &ImageType, base64_url: &String) -> Pr
             .find(|&(k, &_)| url.contains(k))
     {
         let local_path = url.replace(external_path_component, local_path_component);
+        if local_path.contains("..") {
+            return Err(Box::from("local image path traversal rejected"));
+        }
         let mut reader = image::ImageReader::open(local_path)?;
         reader.limits(decoder_limits());
         reader.decode()?
     } else {
-        let res = HTTP_CLIENT.get(url).send()?;
-        let bytes = res.bytes()?;
+        let bytes = fetch_remote_image_bytes(&url)?;
         let mut reader = image::ImageReader::new(Cursor::new(&bytes)).with_guessed_format()?;
         reader.limits(decoder_limits());
         reader.decode()?
