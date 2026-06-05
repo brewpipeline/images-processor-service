@@ -14,6 +14,7 @@ pub type ProcessResult = Result<(), Box<dyn Error + Send + Sync>>;
 
 const DECODER_MAX_ALLOC: u64 = 256 * 1024 * 1024;
 const MAX_DOWNLOAD_BYTES: u64 = 16 * 1024 * 1024;
+const MAX_REDIRECTS: usize = 5;
 
 fn decoder_limits() -> image::Limits {
     let mut limits = image::Limits::default();
@@ -24,7 +25,15 @@ fn decoder_limits() -> image::Limits {
 static HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
     reqwest::blocking::Client::builder()
         .user_agent("Mozilla/5.0 (compatible; BlogImageBot/1.0)")
-        .redirect(reqwest::redirect::Policy::none())
+        .redirect(reqwest::redirect::Policy::custom(|attempt| {
+            if attempt.previous().len() >= MAX_REDIRECTS {
+                attempt.error("too many redirects")
+            } else if url_is_public(attempt.url()) {
+                attempt.follow()
+            } else {
+                attempt.error("redirect to a non-public or non-https address")
+            }
+        }))
         .timeout(Duration::from_secs(15))
         .connect_timeout(Duration::from_secs(5))
         .build()
@@ -65,23 +74,31 @@ fn is_public_ip(ip: &IpAddr) -> bool {
     }
 }
 
-fn fetch_remote_image_bytes(url: &str) -> Result<Vec<u8>, Box<dyn Error + Send + Sync>> {
-    let parsed = url::Url::parse(url)?;
-    if parsed.scheme() != "https" {
-        return Err(Box::from("only https image sources are allowed"));
+fn url_is_public(url: &reqwest::Url) -> bool {
+    if url.scheme() != "https" {
+        return false;
     }
-    let host = parsed.host_str().ok_or("image source has no host")?;
-    let port = parsed.port_or_known_default().unwrap_or(443);
-
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    let port = url.port_or_known_default().unwrap_or(443);
+    let Ok(addrs) = (host, port).to_socket_addrs() else {
+        return false;
+    };
     let mut resolved_any = false;
-    for addr in (host, port).to_socket_addrs()? {
+    for addr in addrs {
         resolved_any = true;
         if !is_public_ip(&addr.ip()) {
-            return Err(Box::from("image source resolves to a non-public address"));
+            return false;
         }
     }
-    if !resolved_any {
-        return Err(Box::from("image source did not resolve"));
+    resolved_any
+}
+
+fn fetch_remote_image_bytes(url: &str) -> Result<Vec<u8>, Box<dyn Error + Send + Sync>> {
+    let parsed = url::Url::parse(url)?;
+    if !url_is_public(&parsed) {
+        return Err(Box::from("image source is not a public https address"));
     }
 
     let res = HTTP_CLIENT.get(parsed).send()?;
